@@ -1,0 +1,13 @@
+config.json
+state.json
+.env
+.env.*
+node_modules/
+.obsidian/
+
+# Generated notes and local vault content
+/20*/
+
+# OS/editor noise
+Thumbs.db
+.DS_Store

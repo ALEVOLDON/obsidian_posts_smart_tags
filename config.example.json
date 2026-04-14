@@ -1,0 +1,11 @@
+﻿{
+    "botToken":  "PASTE_YOUR_BOT_TOKEN_HERE",
+    "channelChatId":  "-1001234567890",
+    "vaultPath":  ".",
+    "pollTimeoutSec":  25,
+    "pollIntervalMs":  1500,
+    "baseTags":  [
+                     "telegram-import",
+                     "live-sync"
+                 ]
+}
