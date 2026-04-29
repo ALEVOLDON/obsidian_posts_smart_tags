@@ -11,10 +11,11 @@ A sleek Node.js utility that automatically captures Telegram channel posts and t
 ## ✨ Key Features
 
 - 📥 **Real-time Sync**: Listens for new and edited channel posts via Telegram Bot API.
-- 📂 **Smart Organization**: Automatically groups notes into folders by year (`/2024/`, `/2025/`).
-- 🏷️ **Auto-Tagging**: Extracts hashtags, links, and repeated keywords to generate smart tags.
+- 📂 **Smart Organization**: Automatically groups notes into folders by year within a centralized directory (default: `/posts/`).
+- 🏷️ **Auto-Tagging**: Extracts hashtags, links, topics, and repeated keywords to generate smart tags.
 - 🛡️ **Duplicate Protection**: Uses a state management system to ensure no post is imported twice.
-- 🛠️ **Public-Safe Architecture**: Designed to be shared without exposing your private tokens or vault data.
+- 🏗️ **Modular Architecture**: Clean code structure for easy maintenance and extension.
+- 🛡️ **Public-Safe**: Designed to be shared without exposing your private tokens or vault data.
 
 ---
 
@@ -36,7 +37,7 @@ Open `config.json` and fill in your details:
 {
   "botToken": "123456:ABC-DEF...",
   "channelChatId": "-1001234567890",
-  "vaultPath": "C:/Users/YourName/Documents/MyVault/TelegramNotes",
+  "vaultPath": "./posts",
   "baseTags": ["telegram-import", "live-sync"]
 }
 ```
@@ -46,17 +47,19 @@ Open `config.json` and fill in your details:
 ## ⚙️ Advanced Configuration
 
 ### Environment Variables
-You can override `config.json` values using environment variables (ideal for CI/CD or Docker):
+You can override `config.json` values using environment variables:
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHANNEL_CHAT_ID`
 - `OBSIDIAN_VAULT_PATH`
+- `TELEGRAM_POLL_TIMEOUT_SEC`
+- `TELEGRAM_POLL_INTERVAL_MS`
 
 ### Finding your Channel ID
 Not sure what your `channelChatId` is?
 1. Post a test message in your channel.
 2. Run the inspection helper:
    ```powershell
-   node .\inspect_updates.mjs
+   npm run inspect-updates
    ```
 3. Look for the `chat -> id` in the JSON output.
 
@@ -70,8 +73,8 @@ This repository is configured to be **public-ready**. Follow these rules to keep
 > **Never Commit Secrets**
 > Ensure `config.json` and `state.json` are listed in your `.gitignore`.
 
-- ✅ **Keep in Git**: `config.example.json`, `*.mjs`, `README.md`.
-- ❌ **Exclude from Git**: `config.json`, `state.json`, your exported `.md` notes, and private media.
+- ✅ **Keep in Git**: `src/`, `config.example.json`, `package.json`, `README.md`.
+- ❌ **Exclude from Git**: `config.json`, `state.json`, `posts/` (exported notes), and private media.
 
 If you ever accidentally commit a `botToken`, **revoke it immediately** via @BotFather.
 
@@ -79,12 +82,15 @@ If you ever accidentally commit a `botToken`, **revoke it immediately** via @Bot
 
 ## 📁 Project Structure
 
-| File | Purpose |
+| File/Folder | Purpose |
 | :--- | :--- |
-| `telegram_to_obsidian.mjs` | The heart of the sync service. |
+| `src/index.js` | Main entry point of the sync service. |
+| `src/lib/` | Core logic modules (API, tagger, renderer, etc.). |
+| `src/tools/` | Utility tools like the update inspector. |
+| `posts/` | Centralized folder for synced Markdown notes. |
 | `start_sync.ps1` | One-click PowerShell launcher. |
-| `inspect_updates.mjs` | Debug tool to see raw Telegram data. |
-| `config.example.json` | Template for your local configuration. |
+| `config.json` | Local configuration (ignored by Git). |
+| `state.json` | Local sync state (ignored by Git). |
 
 ---
 

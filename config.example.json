@@ -1,7 +1,8 @@
-﻿{
+{
     "botToken":  "PASTE_YOUR_BOT_TOKEN_HERE",
     "channelChatId":  "-1001234567890",
-    "vaultPath":  ".",
+    "vaultPath":  "./posts",
+
     "pollTimeoutSec":  25,
     "pollIntervalMs":  1500,
     "baseTags":  [

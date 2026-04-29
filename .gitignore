@@ -6,7 +6,7 @@ node_modules/
 .obsidian/
 
 # Generated notes and local vault content
-/20*/
+/posts/
 
 # OS/editor noise
 Thumbs.db

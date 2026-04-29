@@ -1,12 +1,12 @@
-﻿{
+{
   "name": "telegram-to-obsidian-sync",
   "version": "1.0.0",
   "private": true,
   "description": "Sync Telegram channel posts into Markdown files for Obsidian",
   "type": "module",
   "scripts": {
-    "start": "node telegram_to_obsidian.mjs",
-    "check": "node --check telegram_to_obsidian.mjs",
-    "inspect-updates": "node inspect_updates.mjs"
+    "start": "node src/index.js",
+    "check": "node --check src/index.js",
+    "inspect-updates": "node src/tools/inspect.js"
   }
 }
