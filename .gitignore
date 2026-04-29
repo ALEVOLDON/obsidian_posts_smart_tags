@@ -4,6 +4,9 @@ state.json
 .env.*
 node_modules/
 .obsidian/
+result.json
+stickers/
+video_files/
 
 # Generated notes and local vault content
 /posts/
