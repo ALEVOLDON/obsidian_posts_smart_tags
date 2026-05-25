@@ -14,6 +14,7 @@ A sleek Node.js utility that automatically captures Telegram channel posts and t
 - 📂 **Smart Organization**: Automatically groups notes into folders by year within a centralized directory (default: `/posts/`).
 - 🏷️ **Auto-Tagging**: Extracts hashtags, links, topics, and repeated keywords to generate smart tags.
 - 🛡️ **Duplicate Protection**: Uses a state management system to ensure no post is imported twice.
+- 🌐 **Website Export**: Compiles your Obsidian notes into a structured `posts.json` file inside your portfolio/website codebase for interactive knowledge visualization.
 - 🏗️ **Modular Architecture**: Clean code structure for easy maintenance and extension.
 - 🛡️ **Public-Safe**: Designed to be shared without exposing your private tokens or vault data.
 
@@ -32,17 +33,29 @@ Run the launcher script. If it's your first time, it will create a `config.json`
 ```
 
 ### 3. Configuration
-Open `config.json` and fill in your details:
+Open `config.json` and fill in your details (including `websitePath` to integrate with your portfolio website):
 ```json
 {
   "botToken": "123456:ABC-DEF...",
   "channelChatId": "-1001234567890",
   "vaultPath": "./posts",
-  "baseTags": ["telegram-import", "live-sync"]
+  "baseTags": ["telegram-import", "live-sync"],
+  "websitePath": "d:/_CODE_2026_/portfolio-clone"
 }
 ```
 
 ---
+
+## 🌐 Website Integration
+
+The sync service automatically compiles your Obsidian Markdown posts into a single structured static JSON feed at `${websitePath}/public/data/posts.json` so your front-end application can query it at runtime.
+
+- **Auto-Sync**: The export runs automatically on bot startup, and every time a new or updated post is processed.
+- **Manual Export**: Run the exporter script manually using:
+  ```powershell
+  npm run export-site
+  ```
+
 
 ## ⚙️ Advanced Configuration
 
