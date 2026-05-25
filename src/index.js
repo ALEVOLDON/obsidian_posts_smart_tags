@@ -58,6 +58,13 @@ async function writeMessageToVault(config, state, channelTitle, message) {
     updatedAt: new Date().toISOString(),
     edited: Boolean(message.edit_date),
   };
+
+  try {
+    const { exportVaultToWebsite } = await import("./lib/exporter.js");
+    await exportVaultToWebsite(config);
+  } catch (err) {
+    log(`Failed to run export after writing post: ${err.message}`);
+  }
 }
 
 /**
@@ -87,6 +94,13 @@ async function main() {
   await fs.mkdir(config.vaultPath, { recursive: true });
   log(`Vault path: ${config.vaultPath}`);
   log(`Listening for Telegram posts from ${config.channelChatId}`);
+
+  try {
+    const { exportVaultToWebsite } = await import("./lib/exporter.js");
+    await exportVaultToWebsite(config);
+  } catch (err) {
+    log(`Failed to run startup export: ${err.message}`);
+  }
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
