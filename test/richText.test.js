@@ -2,10 +2,13 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { extractText } from "../src/lib/renderer.js";
 import {
+  dedupeLeadingHeadings,
   extractPlainText,
   htmlToMarkdown,
+  prepareNoteBody,
   richMarkdownToText,
-  sanitizeRichArtifacts
+  sanitizeRichArtifacts,
+  stripHeadingMatchingTitle
 } from "../src/lib/richText.js";
 
 describe("extractPlainText", () => {
@@ -51,6 +54,45 @@ describe("sanitizeRichArtifacts", () => {
     assert.match(text, /ASUS update/);
     assert.match(text, /Final line/);
     assert.doesNotMatch(text, /\[object Object\]/);
+  });
+});
+
+describe("duplicate headings", () => {
+  it("removes repeated leading headings", () => {
+    const body = dedupeLeadingHeadings(
+      "# ASUS AI\n\n# ASUS AI\n\nBody text",
+      "ASUS AI"
+    );
+    assert.equal(body, "# ASUS AI\n\nBody text");
+  });
+
+  it("prepares note body without injecting a second heading", () => {
+    const body = prepareNoteBody("# Grok Build\n\nDetails here", "Grok Build");
+    assert.equal(body, "# Grok Build\n\nDetails here");
+  });
+
+  it("strips duplicate heading for website rendering", () => {
+    const body = stripHeadingMatchingTitle(
+      "# Grok Build\n\nDetails here",
+      "Grok Build"
+    );
+    assert.equal(body, "Details here");
+  });
+
+  it("removes plain text title repeat after heading", () => {
+    const body = dedupeLeadingHeadings(
+      "# 🚀 Grok Build\n\n🚀 Grok Build\n\nDetails here",
+      "🚀 Grok Build"
+    );
+    assert.equal(body, "# 🚀 Grok Build\n\nDetails here");
+  });
+
+  it("strips plain text title repeat for website rendering", () => {
+    const body = stripHeadingMatchingTitle(
+      "# 🚀 Grok Build\n\n🚀 Grok Build\n\nDetails here",
+      "🚀 Grok Build"
+    );
+    assert.equal(body, "Details here");
   });
 });
 

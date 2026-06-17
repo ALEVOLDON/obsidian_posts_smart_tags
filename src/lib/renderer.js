@@ -1,6 +1,7 @@
 import {
   extractPlainText,
   htmlToMarkdown,
+  prepareNoteBody,
   richMarkdownToText,
   sanitizeRichArtifacts
 } from "./richText.js";
@@ -260,10 +261,11 @@ export function renderMarkdown({ channelTitle, message, tags, hostedMedia = [] }
   ];
 
   for (const tag of tags) lines.push(`  - ${tag}`);
-  lines.push("---", "", `# ${title}`, "");
+  lines.push("---", "");
 
-  if (text) {
-    lines.push(text, "");
+  const body = prepareNoteBody(text, title);
+  if (body) {
+    lines.push(body, "");
   }
 
   if (media.length) {

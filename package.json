@@ -12,6 +12,7 @@
     "deploy-site": "node src/tools/deploy.js",
     "backfill-media": "node src/tools/backfill-media.js",
     "backfill-rich-text": "node src/tools/backfill-rich-text.js",
+    "backfill-headings": "node src/tools/backfill-headings.js",
     "test": "node --test test/*.test.js"
   }
 }

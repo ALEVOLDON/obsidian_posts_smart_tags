@@ -3,20 +3,8 @@ import path from "node:path";
 import process from "node:process";
 import { exportVaultToWebsite, getMarkdownFiles, parseMarkdown } from "./exporter.js";
 import { getTitle } from "./renderer.js";
-import { dedupeLeadingHeadings, sanitizeRichArtifacts } from "./richText.js";
+import { dedupeLeadingHeadings } from "./richText.js";
 import { log } from "./utils.js";
-
-function needsRichCleanup(content) {
-  const parsed = parseMarkdown(content);
-  const body = parsed?.body || "";
-
-  return (
-    content.includes("[object Object]") ||
-    /\n-\s*\n/.test(content) ||
-    /\n  - object\n/.test(content) ||
-    /^#{1,6}\s+[^\n]+\n+\s*#{1,6}\s+/m.test(body)
-  );
-}
 
 function replaceFrontmatterTitle(content, title) {
   const escaped = title.replaceAll('"', '\\"');
@@ -26,14 +14,7 @@ function replaceFrontmatterTitle(content, title) {
   );
 }
 
-function removeObjectTag(content) {
-  return content.replace(/\n  - object\n/g, "\n");
-}
-
 function replaceBody(content, body) {
-  const parsed = parseMarkdown(content);
-  if (!parsed) return content;
-
   const lines = content.split(/\r?\n/);
   let closingFrontmatter = -1;
   let markers = 0;
@@ -50,65 +31,58 @@ function replaceBody(content, body) {
 
   if (closingFrontmatter === -1) return content;
 
-  const tail = lines.slice(closingFrontmatter + 1).join("\n");
-  const prefix = lines.slice(0, closingFrontmatter + 1).join("\n");
+  let insertAt = closingFrontmatter + 1;
+  while (insertAt < lines.length && !lines[insertAt].trim()) {
+    insertAt += 1;
+  }
+
+  const prefix = lines.slice(0, insertAt).join("\n");
   return `${prefix}\n\n${body.trim()}\n`;
 }
 
-function cleanupMarkdownFile(content) {
+function cleanupDuplicateHeadings(content) {
   const parsed = parseMarkdown(content);
-  if (!parsed) {
-    return { changed: false, content };
-  }
+  if (!parsed) return { changed: false, content };
 
   const messageId =
     parsed.metadata.telegram_message_id || parsed.metadata.id || "post";
   const title =
     parsed.metadata.title || getTitle(parsed.body, messageId);
-  const body = dedupeLeadingHeadings(
-    sanitizeRichArtifacts(parsed.body),
-    title
-  );
+  const body = dedupeLeadingHeadings(parsed.body, title);
+  if (body.trim() === parsed.body.trim()) {
+    return { changed: false, content };
+  }
 
   let next = replaceBody(content, body);
-  next = replaceFrontmatterTitle(next, title);
-  next = removeObjectTag(next);
+  next = replaceFrontmatterTitle(next, getTitle(body, messageId));
 
   return {
-    changed: next !== content,
+    changed: true,
     content: next
   };
 }
 
 /**
- * Clean [object Object] artifacts from archived markdown posts.
+ * Remove duplicate headings from all archived markdown notes.
  * @param {Object} config
  * @param {Object} [options]
  */
-export async function backfillRichTextArtifacts(config, options = {}) {
+export async function backfillDuplicateHeadings(config, options = {}) {
   const { dryRun = false } = options;
   const vaultPath = path.resolve(process.cwd(), config.vaultPath);
   const mdFiles = await getMarkdownFiles(vaultPath);
-  const summary = {
-    scanned: mdFiles.length,
-    candidates: 0,
-    updated: 0
-  };
+  const summary = { scanned: mdFiles.length, updated: 0 };
 
   for (const filePath of mdFiles) {
     const original = await fs.readFile(filePath, "utf8");
-    if (!needsRichCleanup(original)) continue;
-
-    summary.candidates += 1;
-    const { changed, content } = cleanupMarkdownFile(original);
+    const { changed, content } = cleanupDuplicateHeadings(original);
     if (!changed) continue;
 
+    summary.updated += 1;
     if (!dryRun) {
       await fs.writeFile(filePath, content, "utf8");
-      log(`[RichBackfill] Cleaned ${path.relative(process.cwd(), filePath)}`);
+      log(`[Headings] Cleaned ${path.relative(process.cwd(), filePath)}`);
     }
-
-    summary.updated += 1;
   }
 
   if (!dryRun && summary.updated > 0) {

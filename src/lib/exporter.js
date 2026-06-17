@@ -1,5 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import {
+  dedupeLeadingHeadings,
+  stripHeadingMatchingTitle
+} from "./richText.js";
 import { log } from "./utils.js";
 
 /**
@@ -118,15 +122,18 @@ export async function exportVaultToWebsite(config) {
         continue;
       }
 
+      const title = parsed.metadata.title || `Post ${parsed.metadata.id}`;
+      const body = dedupeLeadingHeadings(parsed.body, title);
+
       posts.push({
         id: parsed.metadata.id,
         date: parsed.metadata.date || new Date().toISOString(),
-        title: parsed.metadata.title || `Post ${parsed.metadata.id}`,
+        title,
         channel: parsed.metadata.channel || "Telegram Channel",
         telegram_chat_id: parsed.metadata.telegram_chat_id || "",
         telegram_message_id: parsed.metadata.telegram_message_id || parsed.metadata.id,
         tags: parsed.metadata.tags || [],
-        content: parsed.body,
+        content: stripHeadingMatchingTitle(body, title),
       });
     } catch (err) {
       log(`Error parsing file ${path.basename(filePath)}: ${err.message}`);
