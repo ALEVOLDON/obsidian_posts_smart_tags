@@ -1,50 +1,28 @@
-import { execSync } from "node:child_process";
-import fs from "node:fs/promises";
-import path from "node:path";
+import { loadConfig } from "../lib/config.js";
+import { exportVaultToWebsite } from "../lib/exporter.js";
+import { deployWebsiteBatch } from "../lib/siteDeploy.js";
 
 async function main() {
   try {
-    const configPath = path.resolve(process.cwd(), "config.json");
-    const configText = await fs.readFile(configPath, "utf8");
-    const config = JSON.parse(configText);
+    const config = await loadConfig();
 
     if (!config.websitePath) {
       console.error("Error: websitePath is not configured in config.json!");
       process.exit(1);
     }
 
-    const webPath = path.resolve(config.websitePath);
-    console.log(`\n🚀 Starting deployment to live website...`);
-    console.log(`📂 Website Directory: ${webPath}`);
+    console.log("\n📦 Step 1/2: Exporting Obsidian vault to posts.json...");
+    await exportVaultToWebsite(config);
 
-    // Check if git is available
-    try {
-      execSync("git --version", { stdio: "ignore" });
-    } catch {
-      console.error("Error: Git command line tool not found or not in PATH!");
-      process.exit(1);
-    }
+    console.log("🚀 Step 2/2: Deploying posts.json and media to the live website...");
+    const result = deployWebsiteBatch(config);
 
-    // Stage posts.json
-    console.log("Staging public/data/posts.json...");
-    execSync("git add public/data/posts.json", { cwd: webPath });
-
-    // Check if there are changes to commit
-    const status = execSync("git status --porcelain public/data/posts.json", { cwd: webPath }).toString().trim();
-    if (!status) {
-      console.log("ℹ️ No new posts or changes to deploy. posts.json is already up-to-date!");
+    if (!result.pushed) {
+      console.log("\nℹ️ Nothing new to deploy. Site is already up to date.\n");
       return;
     }
 
-    // Commit
-    console.log("Creating commit...");
-    execSync('git commit -m "data: sync posts from obsidian vault"', { cwd: webPath, stdio: "inherit" });
-
-    // Push
-    console.log("Pushing to GitHub...");
-    execSync("git push", { cwd: webPath, stdio: "inherit" });
-
-    console.log("\n✅ Success! Changes pushed. The live site is redeploying now!\n");
+    console.log("\n✅ Success! Posts and media pushed. Vercel is redeploying now.\n");
   } catch (err) {
     console.error(`\n❌ Deployment failed: ${err.message}\n`);
     process.exit(1);

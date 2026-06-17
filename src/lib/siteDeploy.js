@@ -99,3 +99,50 @@ export function deployWebsiteFiles(config, absoluteFilePaths) {
 
   return { pushed: true };
 }
+
+const DAILY_DEPLOY_PATHS = ["public/data/posts.json", "public/media"];
+
+/**
+ * Daily batch deploy for deploy_posts.bat.
+ * Stages posts.json and website media in a single commit.
+ * @param {Object} config
+ * @returns {{ pushed: boolean }}
+ */
+export function deployWebsiteBatch(config) {
+  const repoPath = path.resolve(config.websitePath);
+
+  if (!repoPath) {
+    throw new Error("websitePath is not configured");
+  }
+
+  log(`[Deploy] Preparing daily batch deploy in ${repoPath}`);
+
+  try {
+    execSync("git --version", { stdio: "ignore" });
+  } catch {
+    throw new Error("Git is not available in PATH");
+  }
+
+  for (const relativePath of DAILY_DEPLOY_PATHS) {
+    execSync(`git add "${relativePath}"`, { cwd: repoPath, stdio: "pipe" });
+  }
+
+  const status = execSync("git status --porcelain", {
+    cwd: repoPath,
+    encoding: "utf8"
+  }).trim();
+
+  if (!status) {
+    log("[Deploy] No changes to push (posts.json and media are up to date)");
+    return { pushed: false };
+  }
+
+  execSync('git commit -m "data: sync posts and media from obsidian vault"', {
+    cwd: repoPath,
+    stdio: "pipe"
+  });
+  execSync("git push", { cwd: repoPath, stdio: "pipe" });
+  log("[Deploy] Daily batch pushed; Vercel redeploy started");
+
+  return { pushed: true };
+}

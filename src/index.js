@@ -100,6 +100,10 @@ async function main() {
   log(`Vault path: ${config.vaultPath}`);
   log(`Listening for Telegram posts from ${config.channelChatId}`);
 
+  if (!config.websiteAutoDeploy) {
+    log("Website auto-deploy is OFF. Run deploy_posts.bat when ready to publish.");
+  }
+
   try {
     const { exportVaultToWebsite } = await import("./lib/exporter.js");
     await exportVaultToWebsite(config);
