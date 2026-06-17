@@ -9,6 +9,7 @@
     "check": "node --check src/index.js",
     "inspect-updates": "node src/tools/inspect.js",
     "export-site": "node src/tools/export-once.js",
-    "deploy-site": "node src/tools/deploy.js"
+    "deploy-site": "node src/tools/deploy.js",
+    "test": "node --test test/*.test.js"
   }
 }

@@ -15,6 +15,7 @@ A sleek Node.js utility that automatically captures Telegram channel posts and t
 - 🏷️ **Auto-Tagging**: Extracts hashtags, links, topics, and repeated keywords to generate smart tags.
 - 🛡️ **Duplicate Protection**: Uses a state management system to ensure no post is imported twice.
 - 🌐 **Website Export**: Compiles your Obsidian notes into a structured `posts.json` file inside your portfolio/website codebase for interactive knowledge visualization.
+- 🖼️ **Vercel Media Hosting**: Downloads Telegram attachments into `public/media` on your Vercel site and writes real image URLs into Markdown for the knowledge graph.
 - 🏗️ **Modular Architecture**: Clean code structure for easy maintenance and extension.
 - 🛡️ **Public-Safe**: Designed to be shared without exposing your private tokens or vault data.
 
@@ -40,7 +41,10 @@ Open `config.json` and fill in your details (including `websitePath` to integrat
   "channelChatId": "-1001234567890",
   "vaultPath": "./posts",
   "baseTags": ["telegram-import", "live-sync"],
-  "websitePath": "d:/_CODE_2026_/portfolio-clone"
+  "websitePath": "d:/_CODE_2026_/portfolio-clone",
+  "mediaPublicBaseUrl": "https://alevoldon.com/media",
+  "mediaAutoDeploy": true,
+  "websiteAutoDeploy": true
 }
 ```
 
@@ -51,6 +55,7 @@ Open `config.json` and fill in your details (including `websitePath` to integrat
 The sync service automatically compiles your Obsidian Markdown posts into a single structured static JSON feed at `${websitePath}/public/data/posts.json` so your front-end application can query it at runtime.
 
 - **Auto-Sync**: The export runs automatically on bot startup, and every time a new or updated post is processed.
+- **Auto-Deploy**: When enabled, new media files and updated `posts.json` are committed and pushed to the website repo so Vercel redeploys automatically.
 - **Manual Export**: Run the exporter script manually using:
   ```powershell
   npm run export-site
@@ -109,7 +114,7 @@ If you ever accidentally commit a `botToken`, **revoke it immediately** via @Bot
 
 ## ⚠️ Current Limitations
 
-- **Media**: Currently saves Telegram `file_id` as metadata (files are not downloaded locally yet).
+- **Media**: Non-image attachments (stickers, some documents) are listed as links only when hosting is unavailable.
 - **Formatting**: Support for complex HTML/Markdown formatting is minimal.
 - **Scope**: Optimized for syncing a single primary channel.
 

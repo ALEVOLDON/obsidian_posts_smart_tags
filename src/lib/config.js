@@ -42,11 +42,33 @@ export async function loadConfig() {
     throw new Error("Set channelChatId in config.json");
   }
 
+  const websitePath = config.websitePath ? path.resolve(config.websitePath) : "";
+  const mediaPublicBaseUrl = String(
+    process.env.MEDIA_PUBLIC_BASE_URL || config.mediaPublicBaseUrl || ""
+  ).replace(/\/$/, "");
+  const mediaStorageDir =
+    process.env.MEDIA_STORAGE_DIR ||
+    config.mediaStorageDir ||
+    (websitePath ? path.join(websitePath, "public", "media") : "");
+  const mediaAutoDeploy =
+    process.env.MEDIA_AUTO_DEPLOY !== undefined
+      ? process.env.MEDIA_AUTO_DEPLOY === "true"
+      : config.mediaAutoDeploy !== false;
+  const websiteAutoDeploy =
+    process.env.WEBSITE_AUTO_DEPLOY !== undefined
+      ? process.env.WEBSITE_AUTO_DEPLOY === "true"
+      : config.websiteAutoDeploy !== false;
+
   return {
     ...config,
     botToken,
     channelChatId,
     vaultPath: path.resolve(ROOT, vaultPath),
+    websitePath,
+    mediaStorageDir: mediaStorageDir ? path.resolve(mediaStorageDir) : "",
+    mediaPublicBaseUrl,
+    mediaAutoDeploy: Boolean(mediaAutoDeploy && websitePath),
+    websiteAutoDeploy: Boolean(websiteAutoDeploy && websitePath),
     pollTimeoutSec,
     pollIntervalMs,
     baseTags: Array.isArray(config.baseTags)

@@ -12,6 +12,8 @@ import {
   renderMarkdown,
 } from "./lib/renderer.js";
 import { ensureDir, log, slugify } from "./lib/utils.js";
+import { hostMessageMedia } from "./lib/mediaStorage.js";
+import { deployPostsJsonIfNeeded } from "./lib/websiteSync.js";
 
 const ROOT = process.cwd();
 
@@ -49,7 +51,8 @@ async function writeMessageToVault(config, state, channelTitle, message) {
     ? path.resolve(ROOT, mapped.filePath)
     : buildFilePath(config.vaultPath, message, title);
 
-  const markdown = renderMarkdown({ channelTitle, message, tags });
+  const hostedMedia = await hostMessageMedia(config, state, message);
+  const markdown = renderMarkdown({ channelTitle, message, tags, hostedMedia });
   await ensureDir(filePath);
   await fs.writeFile(filePath, markdown, "utf8");
 
@@ -57,11 +60,13 @@ async function writeMessageToVault(config, state, channelTitle, message) {
     filePath: path.relative(ROOT, filePath),
     updatedAt: new Date().toISOString(),
     edited: Boolean(message.edit_date),
+    mediaUrls: hostedMedia.filter((item) => item.publicUrl).map((item) => item.publicUrl),
   };
 
   try {
     const { exportVaultToWebsite } = await import("./lib/exporter.js");
     await exportVaultToWebsite(config);
+    deployPostsJsonIfNeeded(config);
   } catch (err) {
     log(`Failed to run export after writing post: ${err.message}`);
   }

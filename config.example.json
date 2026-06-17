@@ -2,7 +2,10 @@
     "botToken":  "PASTE_YOUR_BOT_TOKEN_HERE",
     "channelChatId":  "-1001234567890",
     "vaultPath":  "./posts",
-
+    "websitePath":  "D:/_CODE_2026_/portfolio-clone",
+    "mediaPublicBaseUrl":  "https://alevoldon.com/media",
+    "mediaAutoDeploy":  true,
+    "websiteAutoDeploy":  true,
     "pollTimeoutSec":  25,
     "pollIntervalMs":  1500,
     "baseTags":  [

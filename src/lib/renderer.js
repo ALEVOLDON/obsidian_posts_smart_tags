@@ -8,7 +8,7 @@
  * @param {Object} block
  * @returns {string}
  */
-function richBlockToMarkdown(block) {
+function richBlockToMarkdown(block, urlByFileId = {}) {
   if (!block) return "";
 
   switch (block.type) {
@@ -33,6 +33,9 @@ function richBlockToMarkdown(block) {
     }
     case "photo": {
       const photo = block.photo?.at(-1);
+      if (photo?.file_id && urlByFileId[photo.file_id]) {
+        return `![Photo](${urlByFileId[photo.file_id]})\n\n`;
+      }
       if (photo && photo.file_id) {
         return `![Photo](file_id:${photo.file_id})\n\n`;
       }
@@ -102,16 +105,25 @@ function richBlockToMarkdown(block) {
  * @param {Object} message
  * @returns {string}
  */
-export function extractText(message) {
+function replaceFileIdMarkdown(text, urlByFileId) {
+  return String(text || "").replace(
+    /!\[([^\]]*)\]\(file_id:([^)]+)\)/g,
+    (match, alt, fileId) => (urlByFileId[fileId] ? `![${alt || "Photo"}](${urlByFileId[fileId]})` : match)
+  );
+}
+
+export function extractText(message, urlByFileId = {}) {
+  let text = "";
   if (message.rich_message) {
     if (message.rich_message.markdown) {
-      return String(message.rich_message.markdown).trim();
+      text = String(message.rich_message.markdown).trim();
+    } else if (Array.isArray(message.rich_message.blocks)) {
+      text = message.rich_message.blocks.map((b) => richBlockToMarkdown(b, urlByFileId)).join("").trim();
     }
-    if (Array.isArray(message.rich_message.blocks)) {
-      return message.rich_message.blocks.map(b => richBlockToMarkdown(b)).join("").trim();
-    }
+  } else {
+    text = String(message.text || message.caption || "").trim();
   }
-  return String(message.text || message.caption || "").trim();
+  return replaceFileIdMarkdown(text, urlByFileId);
 }
 
 /**
@@ -151,48 +163,24 @@ export function getLinks(text) {
  * @param {Object} message
  * @returns {string[]}
  */
-export function getMediaSummary(message) {
-  const sections = [];
+export function getMediaSummary(hostedMedia = []) {
+  return hostedMedia
+    .filter((item) => item.publicUrl)
+    .map((item) => `- [${item.mediaType}](${item.publicUrl})`);
+}
 
-  if (message.photo?.length) {
-    const photo = message.photo.at(-1);
-    sections.push(`Photo file_id: ${photo.file_id}`);
+function buildUrlMap(hostedMedia) {
+  return Object.fromEntries(
+    hostedMedia.filter((item) => item.publicUrl).map((item) => [item.fileId, item.publicUrl])
+  );
+}
+
+function prependCoverImage(text, hostedMedia) {
+  const cover = hostedMedia.find((item) => item.publicUrl && item.mediaType === "photo");
+  if (!cover || text.includes(cover.publicUrl)) {
+    return text;
   }
-  if (message.video) sections.push(`Video file_id: ${message.video.file_id}`);
-  if (message.document)
-    sections.push(
-      `Document: ${message.document.file_name || "document"} | file_id: ${
-        message.document.file_id
-      }`
-    );
-  if (message.audio) sections.push(`Audio file_id: ${message.audio.file_id}`);
-  if (message.voice) sections.push(`Voice file_id: ${message.voice.file_id}`);
-  if (message.animation)
-    sections.push(`Animation file_id: ${message.animation.file_id}`);
-  if (message.sticker)
-    sections.push(
-      `Sticker: ${message.sticker.emoji || ""} | file_id: ${
-        message.sticker.file_id
-      }`.trim()
-    );
-
-  // Extract media from rich message blocks if any
-  if (message.rich_message && Array.isArray(message.rich_message.blocks)) {
-    message.rich_message.blocks.forEach(block => {
-      if (block.type === "photo" && block.photo?.length) {
-        const photo = block.photo.at(-1);
-        sections.push(`Photo file_id: ${photo.file_id}`);
-      }
-      if (block.type === "video" && block.video) {
-        sections.push(`Video file_id: ${block.video.file_id}`);
-      }
-      if (block.type === "animation" && block.animation) {
-        sections.push(`Animation file_id: ${block.animation.file_id}`);
-      }
-    });
-  }
-
-  return sections;
+  return `![Post cover](${cover.publicUrl})\n\n${text}`;
 }
 
 /**
@@ -200,11 +188,13 @@ export function getMediaSummary(message) {
  * @param {Object} params
  * @returns {string}
  */
-export function renderMarkdown({ channelTitle, message, tags }) {
-  const text = extractText(message);
+export function renderMarkdown({ channelTitle, message, tags, hostedMedia = [] }) {
+  const urlByFileId = buildUrlMap(hostedMedia);
+  let text = extractText(message, urlByFileId);
+  text = prependCoverImage(text, hostedMedia);
   const title = getTitle(text, message.message_id);
   const links = getLinks(text);
-  const media = getMediaSummary(message);
+  const media = getMediaSummary(hostedMedia);
   const hashLine = tags.map((tag) => `#${tag}`).join(" ");
 
   const lines = [

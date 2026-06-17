@@ -11,7 +11,7 @@ const STATE_PATH = path.join(ROOT, "state.json");
  */
 export async function loadState() {
   if (!(await exists(STATE_PATH))) {
-    const initial = { lastUpdateId: 0, messages: {} };
+    const initial = { lastUpdateId: 0, messages: {}, mediaByFileId: {} };
     await writeJson(STATE_PATH, initial);
     return initial;
   }
