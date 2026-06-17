@@ -70,7 +70,7 @@ export function parseMarkdown(content) {
 /**
  * Recursively find all markdown files in a directory.
  */
-async function getMarkdownFiles(dir) {
+export async function getMarkdownFiles(dir) {
   try {
     const entries = await fs.readdir(dir, { withFileTypes: true });
     const files = await Promise.all(

@@ -5,8 +5,11 @@ import { extractText, renderMarkdown } from "../src/lib/renderer.js";
 describe("extractText media urls", () => {
   it("replaces file_id markdown with hosted urls", () => {
     const text = extractText(
-      { text: "![Cover](file_id:abc123)" },
-      { abc123: "https://alevoldon.com/media/telegram/test.jpg" }
+      { text: "![Cover](file_id:AgACAgIAAx0CT0EpfgACCqJp3kMP9CMSSQ4gYpbFdBHA6IMf9wACYBdrG)" },
+      {
+        AgACAgIAAx0CT0EpfgACCqJp3kMP9CMSSQ4gYpbFdBHA6IMf9wACYBdrG:
+          "https://alevoldon.com/media/telegram/test.jpg"
+      }
     );
     assert.match(text, /!\[Cover\]\(https:\/\/alevoldon\.com\/media\/telegram\/test\.jpg\)/);
   });

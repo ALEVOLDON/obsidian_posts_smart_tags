@@ -45,3 +45,57 @@ export function deployWebsiteFile(config, absoluteFilePath) {
 
   return { pushed: true };
 }
+
+/**
+ * Commit and push multiple files inside the website repository in one commit.
+ * @param {Object} config
+ * @param {string[]} absoluteFilePaths
+ * @returns {{ pushed: boolean }}
+ */
+export function deployWebsiteFiles(config, absoluteFilePaths) {
+  const repoPath = path.resolve(config.websitePath);
+  const relativePaths = [
+    ...new Set(
+      absoluteFilePaths
+        .map((filePath) =>
+          path.relative(repoPath, path.resolve(filePath)).replace(/\\/g, "/")
+        )
+        .filter((relativePath) => relativePath && !relativePath.startsWith(".."))
+    )
+  ];
+
+  if (!relativePaths.length) {
+    return { pushed: false };
+  }
+
+  log(`[Deploy] Staging ${relativePaths.length} file(s)...`);
+
+  try {
+    execSync("git --version", { stdio: "ignore" });
+  } catch {
+    throw new Error("Git is not available in PATH");
+  }
+
+  for (const relativePath of relativePaths) {
+    execSync(`git add "${relativePath}"`, { cwd: repoPath, stdio: "pipe" });
+  }
+
+  const status = execSync("git status --porcelain", {
+    cwd: repoPath,
+    encoding: "utf8"
+  }).trim();
+
+  if (!status) {
+    log("[Deploy] No changes to push");
+    return { pushed: false };
+  }
+
+  execSync('git commit -m "sync: backfill media and website data from telegram bot"', {
+    cwd: repoPath,
+    stdio: "pipe"
+  });
+  execSync("git push", { cwd: repoPath, stdio: "pipe" });
+  log("[Deploy] Batch changes pushed; Vercel redeploy started");
+
+  return { pushed: true };
+}

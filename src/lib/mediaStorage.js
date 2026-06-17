@@ -112,13 +112,14 @@ async function saveMediaBuffer(config, buffer, mediaType, fileName) {
   return { absolutePath, relativePath };
 }
 
-async function hostSingleMedia(config, botToken, item) {
+async function hostSingleMedia(config, botToken, item, options = {}) {
+  const shouldDeploy = options.deploy !== false && config.mediaAutoDeploy && config.websitePath;
   const buffer = await downloadTelegramFile(botToken, item.fileId);
   const saved = await saveMediaBuffer(config, buffer, item.mediaType, item.fileName);
   const publicUrl = buildPublicMediaUrl(config, saved.relativePath);
 
   let deployed = false;
-  if (config.mediaAutoDeploy && config.websitePath) {
+  if (shouldDeploy) {
     const result = deployWebsiteFile(config, saved.absolutePath);
     deployed = result.pushed;
   }
@@ -130,6 +131,47 @@ async function hostSingleMedia(config, botToken, item) {
     relativePath: saved.relativePath,
     deployed
   };
+}
+
+/**
+ * Download and host a single Telegram file_id, using state cache when available.
+ * @param {Object} config
+ * @param {Object} state
+ * @param {{ fileId: string, mediaType?: string, fileName?: string }} item
+ * @param {{ deploy?: boolean }} [options]
+ */
+export async function ensureFileIdHosted(config, state, item, options = {}) {
+  state.mediaByFileId = state.mediaByFileId || {};
+
+  const cachedUrl = state.mediaByFileId[item.fileId];
+  if (cachedUrl) {
+    return {
+      ...item,
+      publicUrl: cachedUrl,
+      cached: true,
+      deployed: false
+    };
+  }
+
+  const result = await hostSingleMedia(
+    config,
+    config.botToken,
+    {
+      fileId: item.fileId,
+      mediaType: item.mediaType || "photo",
+      fileName: item.fileName || defaultFileName(item.mediaType)
+    },
+    options
+  );
+
+  state.mediaByFileId[item.fileId] = result.publicUrl;
+  return result;
+}
+
+function defaultFileName(mediaType) {
+  return EXTENSION_BY_MEDIA_TYPE[mediaType]
+    ? `file${EXTENSION_BY_MEDIA_TYPE[mediaType]}`
+    : "file.bin";
 }
 
 /**
