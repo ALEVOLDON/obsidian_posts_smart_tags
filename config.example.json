@@ -6,6 +6,7 @@
     "mediaPublicBaseUrl":  "https://alevoldon.com/media",
     "mediaAutoDeploy":  false,
     "websiteAutoDeploy":  false,
+    "verifyChatId":  "123456789",
     "pollTimeoutSec":  25,
     "pollIntervalMs":  1500,
     "baseTags":  [

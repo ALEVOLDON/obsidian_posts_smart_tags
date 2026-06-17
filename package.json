@@ -13,6 +13,8 @@
     "backfill-media": "node src/tools/backfill-media.js",
     "backfill-rich-text": "node src/tools/backfill-rich-text.js",
     "backfill-headings": "node src/tools/backfill-headings.js",
+    "find-duplicates": "node src/tools/find-duplicates.js",
+    "prune-missing-posts": "node src/tools/prune-missing-posts.js",
     "test": "node --test test/*.test.js"
   }
 }
