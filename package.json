@@ -11,6 +11,7 @@
     "export-site": "node src/tools/export-once.js",
     "deploy-site": "node src/tools/deploy.js",
     "backfill-media": "node src/tools/backfill-media.js",
+    "backfill-rich-text": "node src/tools/backfill-rich-text.js",
     "test": "node --test test/*.test.js"
   }
 }

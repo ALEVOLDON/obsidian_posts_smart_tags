@@ -1,8 +1,22 @@
-/**
- * Extract text or caption from a message.
- * @param {Object} message
- * @returns {string}
- */
+import {
+  extractPlainText,
+  htmlToMarkdown,
+  richMarkdownToText,
+  sanitizeRichArtifacts
+} from "./richText.js";
+
+function renderMediaBlock(block, mediaType, urlByFileId) {
+  const fileId = block?.[mediaType]?.file_id;
+  if (!fileId) return "";
+
+  if (urlByFileId[fileId]) {
+    const label = mediaType.charAt(0).toUpperCase() + mediaType.slice(1);
+    return `![${label}](${urlByFileId[fileId]})\n\n`;
+  }
+
+  return `![${mediaType}](file_id:${fileId})\n\n`;
+}
+
 /**
  * Convert a rich message block into Markdown format.
  * @param {Object} block
@@ -12,21 +26,27 @@ function richBlockToMarkdown(block, urlByFileId = {}) {
   if (!block) return "";
 
   switch (block.type) {
-    case "heading": {
-      const level = block.size || 1;
-      return "#".repeat(level) + " " + (block.text || "") + "\n\n";
+    case "heading":
+    case "subheading": {
+      const level = block.size || (block.type === "subheading" ? 2 : 1);
+      const text = extractPlainText(block.text || block.content);
+      return text ? `${"#".repeat(level)} ${text}\n\n` : "";
     }
-    case "paragraph": {
-      return (block.text || "") + "\n\n";
+    case "paragraph":
+    case "text": {
+      const text = extractPlainText(block.text || block.content);
+      return text ? `${text}\n\n` : "";
     }
     case "preformatted":
     case "code": {
       const lang = block.language || "";
-      return "```" + lang + "\n" + (block.text || "") + "\n```\n\n";
+      const text = extractPlainText(block.text || block.content);
+      return text ? `\`\`\`${lang}\n${text}\n\`\`\`\n\n` : "";
     }
     case "block_quote":
     case "quotation": {
-      return "> " + (block.text || "") + "\n\n";
+      const text = extractPlainText(block.text || block.content);
+      return text ? `> ${text}\n\n` : "";
     }
     case "divider": {
       return "---\n\n";
@@ -36,11 +56,17 @@ function richBlockToMarkdown(block, urlByFileId = {}) {
       if (photo?.file_id && urlByFileId[photo.file_id]) {
         return `![Photo](${urlByFileId[photo.file_id]})\n\n`;
       }
-      if (photo && photo.file_id) {
+      if (photo?.file_id) {
         return `![Photo](file_id:${photo.file_id})\n\n`;
       }
       return "";
     }
+    case "video":
+      return renderMediaBlock(block, "video", urlByFileId);
+    case "animation":
+      return renderMediaBlock(block, "animation", urlByFileId);
+    case "document":
+      return renderMediaBlock(block, "document", urlByFileId);
     case "table": {
       const rows = block.cells || block.rows;
       if (!rows || rows.length === 0) return "";
@@ -48,56 +74,71 @@ function richBlockToMarkdown(block, urlByFileId = {}) {
       let markdown = "";
 
       rows.forEach((rowObj, rowIndex) => {
-        const cells = Array.isArray(rowObj) ? rowObj : (rowObj.cells || []);
+        const cells = Array.isArray(rowObj) ? rowObj : rowObj.cells || [];
 
-        markdown += "| " + cells.map(cell => {
-          if (typeof cell === "string") return cell;
-          return cell.text || "";
-        }).join(" | ") + " |\n";
+        markdown += `| ${cells
+          .map((cell) => extractPlainText(cell))
+          .join(" | ")} |\n`;
 
         if (rowIndex === 0) {
-          markdown += "| " + cells.map(cell => {
-            const align = typeof cell === "string" ? "left" : (cell.align || "left");
-            if (align === "center") return " :---: ";
-            if (align === "right") return " ---: ";
-            return " :--- ";
-          }).join(" | ") + " |\n";
+          markdown += `| ${cells
+            .map((cell) => {
+              const align =
+                typeof cell === "string" ? "left" : cell.align || "left";
+              if (align === "center") return " :---: ";
+              if (align === "right") return " ---: ";
+              return " :--- ";
+            })
+            .join(" | ")} |\n`;
         }
       });
 
-      return markdown + "\n";
+      return `${markdown}\n`;
     }
-    case "list": {
+    case "list":
+    case "ordered_list":
+    case "unordered_list": {
       const items = block.items || [];
-      const isOrdered = block.ordered || false;
+      const isOrdered = Boolean(
+        block.ordered || block.type === "ordered_list"
+      );
       let markdown = "";
 
       items.forEach((item, index) => {
-        let itemText = "";
-        if (typeof item === "string") {
-          itemText = item;
-        } else if (item.text) {
-          itemText = item.text;
-        } else if (item.content) {
-          if (typeof item.content === "string") {
-            itemText = item.content;
-          } else if (item.content.text) {
-            itemText = item.content.text;
-          }
-        }
+        const itemText = extractPlainText(
+          typeof item === "string" ? item : item.text || item.content || item
+        );
+        if (!itemText) return;
 
         const prefix = isOrdered ? `${index + 1}. ` : "- ";
-        markdown += prefix + itemText + "\n";
+        markdown += `${prefix}${itemText}\n`;
       });
 
-      return markdown + "\n";
+      return markdown ? `${markdown}\n` : "";
     }
-    default:
-      if (block.text) {
-        return block.text + "\n\n";
-      }
-      return "";
+    default: {
+      const text = extractPlainText(
+        block.text || block.content || block.children
+      );
+      return text ? `${text}\n\n` : "";
+    }
   }
+}
+
+/**
+ * Replace legacy file_id markdown placeholders with hosted URLs.
+ * @param {string} text
+ * @param {Record<string, string>} urlByFileId
+ * @returns {string}
+ */
+function replaceFileIdMarkdown(text, urlByFileId) {
+  return String(text || "").replace(
+    /!\[([^\]]*)\]\(file_id:([^)]+)\)/g,
+    (match, alt, fileId) =>
+      urlByFileId[fileId]
+        ? `![${alt || "Photo"}](${urlByFileId[fileId]})`
+        : match
+  );
 }
 
 /**
@@ -105,25 +146,27 @@ function richBlockToMarkdown(block, urlByFileId = {}) {
  * @param {Object} message
  * @returns {string}
  */
-function replaceFileIdMarkdown(text, urlByFileId) {
-  return String(text || "").replace(
-    /!\[([^\]]*)\]\(file_id:([^)]+)\)/g,
-    (match, alt, fileId) => (urlByFileId[fileId] ? `![${alt || "Photo"}](${urlByFileId[fileId]})` : match)
-  );
-}
-
 export function extractText(message, urlByFileId = {}) {
+  const rich = message.rich_message;
   let text = "";
-  if (message.rich_message) {
-    if (message.rich_message.markdown) {
-      text = String(message.rich_message.markdown).trim();
-    } else if (Array.isArray(message.rich_message.blocks)) {
-      text = message.rich_message.blocks.map((b) => richBlockToMarkdown(b, urlByFileId)).join("").trim();
+
+  if (rich) {
+    if (Array.isArray(rich.blocks) && rich.blocks.length > 0) {
+      text = rich.blocks
+        .map((block) => richBlockToMarkdown(block, urlByFileId))
+        .join("");
+    } else if (rich.markdown != null) {
+      text = richMarkdownToText(rich.markdown);
+    } else if (rich.html) {
+      text = htmlToMarkdown(rich.html);
     }
-  } else {
-    text = String(message.text || message.caption || "").trim();
   }
-  return replaceFileIdMarkdown(text, urlByFileId);
+
+  if (!text) {
+    text = String(message.text || message.caption || "");
+  }
+
+  return replaceFileIdMarkdown(sanitizeRichArtifacts(text.trim()), urlByFileId);
 }
 
 /**
@@ -133,12 +176,13 @@ export function extractText(message, urlByFileId = {}) {
  * @returns {string}
  */
 export function getTitle(text, messageId) {
-  let firstLine = text
+  const cleaned = sanitizeRichArtifacts(text);
+  let firstLine = cleaned
     .split(/\r?\n/)
     .map((line) => line.trim())
     .find(Boolean);
   if (!firstLine) return `Post ${messageId}`;
-  
+
   firstLine = firstLine
     .replace(/^#+\s+/, "")
     .replace(/\*\*|__|\*|_/g, "")
@@ -171,12 +215,16 @@ export function getMediaSummary(hostedMedia = []) {
 
 function buildUrlMap(hostedMedia) {
   return Object.fromEntries(
-    hostedMedia.filter((item) => item.publicUrl).map((item) => [item.fileId, item.publicUrl])
+    hostedMedia
+      .filter((item) => item.publicUrl)
+      .map((item) => [item.fileId, item.publicUrl])
   );
 }
 
 function prependCoverImage(text, hostedMedia) {
-  const cover = hostedMedia.find((item) => item.publicUrl && item.mediaType === "photo");
+  const cover = hostedMedia.find(
+    (item) => item.publicUrl && item.mediaType === "photo"
+  );
   if (!cover || text.includes(cover.publicUrl)) {
     return text;
   }
@@ -231,3 +279,5 @@ export function renderMarkdown({ channelTitle, message, tags, hostedMedia = [] }
   lines.push("## Tags", "", hashLine, "");
   return lines.join("\n");
 }
+
+export { sanitizeRichArtifacts };
