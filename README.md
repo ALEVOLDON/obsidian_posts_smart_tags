@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/cover.jpg" alt="obsidian_posts_smart_tags Cover" width="100%" />
+</p>
+
 # 🚀 Telegram to Obsidian Sync
 
 A sleek Node.js utility that automatically captures Telegram channel posts and transforms them into organized Markdown notes for your Obsidian vault.
