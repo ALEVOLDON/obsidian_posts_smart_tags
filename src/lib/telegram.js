@@ -1,3 +1,5 @@
+import { SocksProxyAgent } from "socks-proxy-agent";
+import https from "node:https";
 import { log } from "./utils.js";
 
 /**
@@ -7,26 +9,37 @@ import { log } from "./utils.js";
  * @param {Object} params
  * @returns {Promise<any>}
  */
-export async function apiCall(botToken, method, params) {
+export async function apiCall(botToken, method, params = {}) {
   const url = new URL(`https://api.telegram.org/bot${botToken}/${method}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null)
       url.searchParams.set(key, String(value));
   });
 
-  const response = await fetch(url, { method: "GET" });
-  if (!response.ok) {
-    throw new Error(`Telegram API ${method} failed with ${response.status}`);
+  const reqOptions = { method: "GET" };
+  if (process.env.SOCKS_PROXY) {
+    reqOptions.agent = new SocksProxyAgent(process.env.SOCKS_PROXY);
   }
 
-  const json = await response.json();
-  if (!json.ok) {
-    throw new Error(
-      `Telegram API ${method} error: ${json.description || "unknown error"}`
-    );
-  }
-
-  return json.result;
+  return new Promise((resolve, reject) => {
+    const req = https.request(url, reqOptions, (res) => {
+      let data = "";
+      res.on("data", chunk => data += chunk);
+      res.on("end", () => {
+        try {
+          const json = JSON.parse(data);
+          if (!json.ok) {
+            return reject(new Error(`Telegram API ${method} error: ${json.description || "unknown"}`));
+          }
+          resolve(json.result);
+        } catch (e) {
+          reject(new Error(`Failed to parse Telegram API response: ${e.message}`));
+        }
+      });
+    });
+    req.on("error", reject);
+    req.end();
+  });
 }
 
 /**

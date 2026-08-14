@@ -17,5 +17,8 @@
     "prune-missing-posts": "node src/tools/prune-missing-posts.js",
     "backfill-missed": "node src/tools/backfill-missed-posts.js",
     "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "socks-proxy-agent": "^8.0.5"
   }
 }
