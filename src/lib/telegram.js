@@ -1,5 +1,6 @@
 import { SocksProxyAgent } from "socks-proxy-agent";
 import https from "node:https";
+import dns from "node:dns";
 import { log } from "./utils.js";
 
 /**
@@ -16,7 +17,19 @@ export async function apiCall(botToken, method, params = {}) {
       url.searchParams.set(key, String(value));
   });
 
-  const reqOptions = { method: "GET" };
+  const reqOptions = {
+    method: "GET",
+    lookup(hostname, options, callback) {
+      if (hostname === "api.telegram.org") {
+        const ip = "149.154.167.220";
+        if (options?.all) {
+          return callback(null, [{ address: ip, family: 4 }]);
+        }
+        return callback(null, ip, 4);
+      }
+      return dns.lookup(hostname, options, callback);
+    }
+  };
   if (process.env.SOCKS_PROXY) {
     reqOptions.agent = new SocksProxyAgent(process.env.SOCKS_PROXY);
   }
