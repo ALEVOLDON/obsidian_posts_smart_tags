@@ -30,16 +30,23 @@ export async function exists(target) {
  */
 export async function readJson(filePath) {
   const raw = await fs.readFile(filePath, "utf8");
-  return JSON.parse(raw.replace(/^\uFEFF/, ""));
+  const trimmed = raw.replace(/^\uFEFF/, "").trim();
+  if (!trimmed) {
+    throw new Error(`File is empty (0 bytes): ${filePath}`);
+  }
+  return JSON.parse(trimmed);
 }
 
 /**
- * Write an object to a JSON file.
+ * Write an object to a JSON file atomically.
  * @param {string} filePath
  * @param {any} value
  */
 export async function writeJson(filePath, value) {
-  await fs.writeFile(filePath, JSON.stringify(value, null, 2), "utf8");
+  const tempPath = `${filePath}.tmp.${Date.now()}`;
+  const data = JSON.stringify(value, null, 2);
+  await fs.writeFile(tempPath, data, "utf8");
+  await fs.rename(tempPath, filePath);
 }
 
 /**

@@ -18,27 +18,24 @@ export async function apiCall(botToken, method, params = {}) {
   });
 
   const reqOptions = {
-    method: "GET",
-    lookup(hostname, options, callback) {
-      if (hostname === "api.telegram.org") {
-        const ip = "149.154.167.220";
-        if (options?.all) {
-          return callback(null, [{ address: ip, family: 4 }]);
-        }
-        return callback(null, ip, 4);
-      }
-      return dns.lookup(hostname, options, callback);
-    }
+    method: "GET"
   };
   if (process.env.SOCKS_PROXY) {
     reqOptions.agent = new SocksProxyAgent(process.env.SOCKS_PROXY);
   }
 
+  const timeoutMs = (Number(params.timeout) || 10) * 1000 + 15000;
+
   return new Promise((resolve, reject) => {
+    let timer = setTimeout(() => {
+      req.destroy(new Error(`Telegram API request to ${method} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
     const req = https.request(url, reqOptions, (res) => {
       let data = "";
       res.on("data", chunk => data += chunk);
       res.on("end", () => {
+        clearTimeout(timer);
         try {
           const json = JSON.parse(data);
           if (!json.ok) {
@@ -50,7 +47,10 @@ export async function apiCall(botToken, method, params = {}) {
         }
       });
     });
-    req.on("error", reject);
+    req.on("error", (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
     req.end();
   });
 }

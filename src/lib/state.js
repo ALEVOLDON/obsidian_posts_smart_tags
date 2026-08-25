@@ -15,7 +15,25 @@ export async function loadState() {
     await writeJson(STATE_PATH, initial);
     return initial;
   }
-  return readJson(STATE_PATH);
+  try {
+    const data = await readJson(STATE_PATH);
+    if (!data.messages || typeof data.messages !== 'object') {
+      data.messages = {};
+    }
+    if (typeof data.lastUpdateId !== 'number') {
+      data.lastUpdateId = 0;
+    }
+    return data;
+  } catch (err) {
+    console.error(`[State] Warning: state.json was corrupted (${err.message}). Creating backup and recovering...`);
+    try {
+      const fs = await import("node:fs/promises");
+      await fs.copyFile(STATE_PATH, `${STATE_PATH}.corrupt.${Date.now()}`);
+    } catch {}
+    const initial = { lastUpdateId: 0, messages: {}, mediaByFileId: {} };
+    await writeJson(STATE_PATH, initial);
+    return initial;
+  }
 }
 
 /**
