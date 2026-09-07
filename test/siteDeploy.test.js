@@ -5,5 +5,6 @@ describe("daily deploy paths", () => {
   it("documents the batch targets used by deploy_posts", async () => {
     const module = await import("../src/lib/siteDeploy.js");
     assert.equal(typeof module.deployWebsiteBatch, "function");
+    assert.equal(typeof module.prepareWebsiteRepo, "function");
   });
 });

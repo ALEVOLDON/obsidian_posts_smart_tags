@@ -86,6 +86,57 @@ async function processUpdate(config, state, channelTitle, update) {
 }
 
 /**
+ * Run daily export and push to website.
+ */
+async function runDailyDeploy(config) {
+  try {
+    log("[DailyDeploy] 🚀 Running scheduled daily deploy to website...");
+    const { prepareWebsiteRepo, deployWebsiteBatch } = await import("./lib/siteDeploy.js");
+    prepareWebsiteRepo(config);
+
+    const { exportVaultToWebsite } = await import("./lib/exporter.js");
+    await exportVaultToWebsite(config);
+
+    const result = deployWebsiteBatch(config);
+    if (result.pushed) {
+      log("[DailyDeploy] ✅ Daily batch pushed to GitHub; Vercel redeploy started!");
+    } else {
+      log("[DailyDeploy] ℹ️ Site is already up to date, nothing to push.");
+    }
+  } catch (err) {
+    log(`[DailyDeploy] ❌ Error during daily deploy: ${err.message}`);
+  }
+}
+
+/**
+ * Schedule daily deploy at target time every 24 hours.
+ */
+function scheduleDailyDeploy(config) {
+  const targetHour = config.dailyDeployHour !== undefined ? config.dailyDeployHour : 3;
+  const targetMinute = config.dailyDeployMinute !== undefined ? config.dailyDeployMinute : 0;
+
+  function setTimer() {
+    const now = new Date();
+    const next = new Date(now);
+    next.setHours(targetHour, targetMinute, 0, 0);
+    if (next <= now) {
+      next.setDate(next.getDate() + 1);
+    }
+    const msUntil = next.getTime() - now.getTime();
+    const hours = Math.floor(msUntil / (1000 * 60 * 60));
+    const mins = Math.floor((msUntil % (1000 * 60 * 60)) / (1000 * 60));
+    log(`[DailyDeploy] ⏰ Next daily deploy scheduled for ${next.toLocaleDateString()} at ${String(targetHour).padStart(2, '0')}:${String(targetMinute).padStart(2, '0')} (in ${hours}h ${mins}m)`);
+
+    setTimeout(async () => {
+      await runDailyDeploy(config);
+      setTimer();
+    }, msUntil);
+  }
+
+  setTimer();
+}
+
+/**
  * Main application loop.
  */
 async function main() {
@@ -100,7 +151,9 @@ async function main() {
   log(`Vault path: ${config.vaultPath}`);
   log(`Listening for Telegram posts from ${config.channelChatId}`);
 
-  if (!config.websiteAutoDeploy) {
+  if (config.dailyDeploy !== false && config.websitePath) {
+    scheduleDailyDeploy(config);
+  } else if (!config.websiteAutoDeploy) {
     log("Website auto-deploy is OFF. Run deploy_posts.bat when ready to publish.");
   }
 

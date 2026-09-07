@@ -1,6 +1,6 @@
 import { loadConfig } from "../lib/config.js";
 import { exportVaultToWebsite } from "../lib/exporter.js";
-import { deployWebsiteBatch } from "../lib/siteDeploy.js";
+import { deployWebsiteBatch, prepareWebsiteRepo } from "../lib/siteDeploy.js";
 import { execSync } from "child_process";
 import path from "path";
 import fs from "fs";
@@ -16,8 +16,12 @@ async function main() {
 
     // Auto-sync latest posts from TV Box before deployment
     if (process.platform === 'win32') {
-      const syncScript = path.join('C:', 'Users', 'alevo', 'Desktop', 'H96_TV_Box_Project', 'sync_posts_from_box.py');
-      if (fs.existsSync(syncScript)) {
+      const candidatePaths = [
+        path.join('D:', '_CODE_2026_', 'H96_TV_Box_Project', 'sync_posts_from_box.py'),
+        path.join('C:', 'Users', 'alevo', 'Desktop', 'H96_TV_Box_Project', 'sync_posts_from_box.py')
+      ];
+      const syncScript = candidatePaths.find(p => fs.existsSync(p));
+      if (syncScript) {
         console.log("\n🔄 Step 1/3: Checking & syncing latest posts from TV Box...");
         try {
           execSync(`python "${syncScript}"`, { stdio: 'inherit' });
@@ -26,6 +30,9 @@ async function main() {
         }
       }
     }
+
+    // Ensure repository is clean, on branch main, and up to date before exporting
+    prepareWebsiteRepo(config);
 
     console.log("\n📦 Step 2/3: Exporting Obsidian vault to posts.json...");
     await exportVaultToWebsite(config);
